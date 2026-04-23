@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="House Fund">
+<meta name="theme-color" content="#f2ede3">
+<link rel="apple-touch-icon" href="icon.png">
+<title>House Fund Forecaster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html {
+    /* Prevent pull-to-refresh and rubber-band scroll chaining */
+    overscroll-behavior-y: contain;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f2ede3;
+    font-family: 'Fraunces', Georgia, serif;
+    color: #1a1410;
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+    /* Support iPhone notch/home indicator */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  /* Disable double-tap zoom on interactive elements */
+  button, .holding-row, input[type="text"], input[type="number"] {
+    touch-action: manipulation;
+  }
+  input, button, select { font-family: inherit; }
+  input[type="text"], input[type="number"] {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 4px;
+    font-size: 16px; /* Prevent iOS zoom-on-focus */
+  }
+  input:focus, button:focus { outline: none; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+.masthead {
+border-bottom: 2px solid #1a1410;
+padding: 16px 16px 14px;
+}
+.masthead-top {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 9.5px;
+letter-spacing: 0.18em;
+text-transform: uppercase;
+opacity: 0.7;
+font-family: ‘JetBrains Mono’, monospace;
+gap: 8px;
+}
+.save-status { display: inline-flex; align-items: center; gap: 5px; }
+.save-dot {
+width: 6px; height: 6px;
+border-radius: 50%;
+background: #2d6b3f;
+transition: background 0.2s;
+}
+.save-dot.saving { background: #b8861f; }
+.save-dot.error  { background: #b8341f; }
+
+h1.title {
+font-family: ‘Fraunces’, serif;
+font-weight: 900;
+font-size: clamp(30px, 9vw, 44px);
+line-height: 0.95;
+margin: 10px 0 4px;
+letter-spacing: -0.02em;
+font-variation-settings: “opsz” 144;
+}
+h1.title em { font-weight: 400; font-style: italic; }
+
+.container { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.advisory {
+background: #fff8eb; border: 1px solid #d4a845; border-radius: 4px;
+padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start;
+font-size: 12.5px; line-height: 1.5;
+}
+.advisory-icon { flex-shrink: 0; margin-top: 2px; color: #8b6914; font-size: 16px; }
+
+section.card {
+background: #fff; padding: 16px;
+border: 1px solid rgba(26,20,16,0.1); border-radius: 4px;
+}
+.card-header {
+font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+opacity: 0.55; margin-bottom: 14px;
+font-family: ‘JetBrains Mono’, monospace;
+display: flex; align-items: center; gap: 6px; justify-content: space-between;
+}
+.card-header-total {
+font-family: ‘JetBrains Mono’, monospace; font-size: 11px;
+letter-spacing: 0; text-transform: none; opacity: 0.8;
+}
+
+.field-label {
+font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+opacity: 0.6; font-family: ‘JetBrains Mono’, monospace;
+margin-bottom: 8px; display: block;
+}
+
+.money-wrap { position: relative; }
+.money-wrap .prefix {
+position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+font-family: ‘JetBrains Mono’, monospace; font-size: 16px;
+opacity: 0.5; pointer-events: none;
+}
+.money-input {
+width: 100%; background: #fff;
+border: 1px solid rgba(26,20,16,0.2); border-radius: 4px;
+padding: 14px 14px 14px 26px; font-size: 17px;
+font-family: ‘JetBrains Mono’, monospace; color: #1a1410;
+}
+.money-input:focus { border-color: #8b2f1f; }
+
+.pct-wrap { position: relative; }
+.pct-wrap .suffix {
+position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+font-family: ‘JetBrains Mono’, monospace; font-size: 14px;
+opacity: 0.5; pointer-events: none;
+}
+.pct-input {
+width: 100%; background: #fff;
+border: 1px solid rgba(26,20,16,0.2); border-radius: 4px;
+padding: 12px 28px 12px 12px; font-size: 16px;
+font-family: ‘JetBrains Mono’, monospace; color: #1a1410; text-align: right;
+}
+.pct-input:focus { border-color: #8b2f1f; }
+
+.text-input {
+width: 100%; background: #fff;
+border: 1px solid rgba(26,20,16,0.2); border-radius: 4px;
+padding: 12px 14px; font-size: 16px;
+font-family: ‘JetBrains Mono’, monospace; color: #1a1410;
+text-transform: uppercase;
+}
+.text-input:focus { border-color: #8b2f1f; }
+
+.stepper {
+display: flex; align-items: center; background: #fff;
+border: 1px solid rgba(26,20,16,0.2); border-radius: 4px; overflow: hidden;
+}
+.stepper button {
+background: transparent; border: none;
+padding: 12px 16px; font-size: 20px;
+font-family: ‘JetBrains Mono’, monospace; color: #1a1410;
+cursor: pointer;
+}
+.stepper button:first-child { border-right: 1px solid rgba(26,20,16,0.15); }
+.stepper button:last-child { border-left: 1px solid rgba(26,20,16,0.15); }
+.stepper .stepper-value {
+flex: 1; text-align: center;
+font-family: ‘JetBrains Mono’, monospace; font-size: 17px;
+padding: 10px 0;
+}
+.stepper button:active { background: rgba(26,20,16,0.08); }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.target-box {
+padding-top: 14px; border-top: 1px dashed rgba(26,20,16,0.2);
+margin-top: 14px;
+}
+.target-amount {
+font-size: 28px; font-weight: 600;
+font-family: ‘JetBrains Mono’, monospace;
+}
+.target-breakdown {
+font-size: 12px; opacity: 0.6; margin-top: 2px;
+font-family: ‘JetBrains Mono’, monospace;
+}
+
+.holding {
+background: #fafaf7; border-radius: 3px; margin-bottom: 10px;
+overflow: hidden; border-left: 3px solid #1a1410;
+}
+.holding-row {
+width: 100%; background: transparent; border: none;
+padding: 14px; text-align: left; cursor: pointer; color: #1a1410;
+display: flex; align-items: center; gap: 10px;
+}
+.holding-main { flex: 1; min-width: 0; }
+.holding-ticker-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.holding-ticker { font-family: ‘JetBrains Mono’, monospace; font-weight: 600; font-size: 15px; }
+.holding-pill {
+font-family: ‘JetBrains Mono’, monospace; font-size: 10px;
+padding: 2px 6px; color: #fff; border-radius: 2px;
+}
+.holding-name { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+.holding-value {
+font-family: ‘JetBrains Mono’, monospace; font-size: 15px;
+font-weight: 600; text-align: right;
+}
+.holding-return {
+font-family: ‘JetBrains Mono’, monospace; font-size: 11px;
+opacity: 0.6; margin-top: 2px; text-align: right;
+}
+.holding-pct {
+font-family: ‘JetBrains Mono’, monospace; font-size: 10px;
+opacity: 0.5; text-align: right;
+}
+.chevron { opacity: 0.5; font-size: 14px; font-family: ‘JetBrains Mono’, monospace; }
+.holding-detail {
+padding: 4px 14px 14px;
+border-top: 1px solid rgba(26,20,16,0.08);
+display: flex; flex-direction: column; gap: 12px;
+}
+.type-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+.type-btn {
+flex: 1 1 auto; background: #fff; color: #1a1410;
+border: 1px solid rgba(26,20,16,0.2); border-radius: 4px;
+padding: 10px 12px; font-size: 12px;
+font-family: ‘JetBrains Mono’, monospace; cursor: pointer;
+}
+.type-btn.active { color: #fff; }
+.remove-btn {
+background: transparent; border: 1px solid rgba(184,52,31,0.3);
+color: #b8341f; padding: 10px; font-size: 12px;
+font-family: ‘JetBrains Mono’, monospace; border-radius: 4px;
+cursor: pointer; margin-top: 4px;
+}
+.add-holding {
+width: 100%; background: transparent;
+border: 1px dashed rgba(26,20,16,0.3); border-radius: 4px;
+padding: 14px; font-size: 13px;
+font-family: ‘JetBrains Mono’, monospace;
+letter-spacing: 0.1em; text-transform: uppercase;
+color: #1a1410; cursor: pointer; margin-top: 4px;
+}
+
+.allocation-bar {
+display: flex; height: 10px;
+background: rgba(26,20,16,0.06); border-radius: 2px; overflow: hidden;
+}
+.allocation-legend {
+display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;
+font-size: 11px; font-family: ‘JetBrains Mono’, monospace;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 8px; height: 8px; border-radius: 1px; }
+
+.vehicle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.vehicle-btn {
+background: #fff; color: #1a1410;
+border: 1px solid rgba(26,20,16,0.2); border-radius: 4px;
+padding: 12px 10px; font-size: 13px;
+font-family: ‘JetBrains Mono’, monospace; cursor: pointer;
+display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.vehicle-btn.active { background: #1a1410; color: #f2ede3; border-color: #1a1410; }
+.vehicle-btn-name { font-weight: 600; }
+.vehicle-btn-rate { font-size: 11px; opacity: 0.7; }
+
+.verdict {
+display: flex; flex-direction: column; gap: 1px;
+background: rgba(26,20,16,0.12); border-radius: 4px; overflow: hidden;
+}
+.verdict-cell { background: #fff; padding: 16px; }
+.verdict-value {
+font-size: 30px; font-weight: 600;
+font-family: ‘JetBrains Mono’, monospace;
+}
+.verdict-note {
+font-size: 12px; margin-top: 2px;
+display: flex; align-items: center; gap: 4px;
+}
+
+/* Chart */
+.chart-card { padding: 16px 4px 10px 4px; }
+.chart-header { padding: 0 12px 12px; }
+.chart-subtitle { font-size: 12px; opacity: 0.65; line-height: 1.5; }
+svg.chart-svg { display: block; width: 100%; height: auto; }
+.chart-tooltip {
+background: #1a1410; color: #f2ede3;
+padding: 10px 12px; border-radius: 4px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px; margin: 0 12px 8px; line-height: 1.6;
+display: none;
+}
+.chart-tooltip-title {
+font-weight: 600; padding-bottom: 4px; margin-bottom: 4px;
+border-bottom: 1px solid rgba(242,237,227,0.2);
+}
+.chart-tooltip-row {
+display: flex; justify-content: space-between; gap: 16px;
+}
+.chart-tooltip-row .swatch {
+display: inline-block; width: 8px; height: 8px;
+border-radius: 2px; margin-right: 6px; vertical-align: middle;
+}
+.chart-legend {
+display: flex; flex-wrap: wrap; gap: 10px 14px;
+justify-content: center; padding: 8px 12px 4px;
+font-size: 10px; font-family: ‘JetBrains Mono’, monospace;
+}
+.legend-line {
+display: inline-block; width: 18px; height: 2px;
+background: #1a1410; margin-right: 5px; vertical-align: middle;
+}
+
+/* Table */
+.table-card { padding: 16px 0 4px 0; }
+.table-header { padding: 0 16px 10px; }
+.table-swipe-hint { font-size: 11px; opacity: 0.6; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table {
+width: 100%; border-collapse: collapse;
+font-size: 12px; min-width: 420px;
+}
+table thead tr {
+background: #f2ede3;
+border-top: 1px solid rgba(26,20,16,0.12);
+border-bottom: 1px solid rgba(26,20,16,0.12);
+}
+table th {
+padding: 8px 10px; text-align: right;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px; letter-spacing: 0.1em;
+text-transform: uppercase; font-weight: 600;
+}
+table th:first-child {
+text-align: left; padding-left: 12px;
+position: sticky; left: 0; background: #f2ede3;
+}
+table td {
+padding: 10px 10px; text-align: right;
+font-family: ‘JetBrains Mono’, monospace;
+}
+table td:first-child {
+text-align: left; padding-left: 12px; font-weight: 600;
+position: sticky; left: 0; background: #fff;
+}
+table tbody tr { border-bottom: 1px solid rgba(26,20,16,0.06); }
+table tbody tr.hit { background: #eef7ee; }
+table tbody tr.hit td:first-child { background: #eef7ee; }
+
+/* Snapshots */
+.snapshot-row {
+display: flex; justify-content: space-between; align-items: center;
+padding: 12px 0; border-bottom: 1px solid rgba(26,20,16,0.06);
+gap: 10px;
+}
+.snapshot-row:last-child { border-bottom: none; }
+.snapshot-date {
+font-family: ‘JetBrains Mono’, monospace; font-size: 13px;
+font-weight: 600;
+}
+.snapshot-sub {
+font-family: ‘JetBrains Mono’, monospace; font-size: 11px;
+opacity: 0.6; margin-top: 2px;
+}
+.snapshot-value {
+font-family: ‘JetBrains Mono’, monospace; font-size: 15px;
+font-weight: 600; text-align: right;
+}
+.snapshot-delta { font-size: 11px; margin-top: 2px; }
+.snapshot-empty {
+padding: 20px 4px; text-align: center; font-size: 13px;
+opacity: 0.5; font-style: italic;
+}
+.snapshot-remove {
+background: transparent; border: none; cursor: pointer;
+opacity: 0.35; padding: 4px 8px; font-size: 16px;
+}
+.snapshot-remove:active { opacity: 1; color: #b8341f; }
+
+.btn-primary {
+width: 100%; background: #1a1410; color: #f2ede3;
+border: none; border-radius: 4px; padding: 14px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;
+cursor: pointer; margin-top: 10px;
+}
+.btn-primary:active { opacity: 0.85; }
+
+.reset-btn {
+background: transparent; color: #1a1410;
+border: 1px solid rgba(26,20,16,0.25); border-radius: 4px;
+padding: 12px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+cursor: pointer; margin-top: 4px;
+}
+
+.footer {
+font-size: 10px; text-align: center; opacity: 0.5;
+padding: 8px 0 40px;
+font-family: ‘JetBrains Mono’, monospace; line-height: 1.6;
+}
+
+.hit-green { color: #2d6b3f; }
+.miss-red { color: #8b2f1f; }
+</style>
+
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-top">
+    <span>Ledger · Vol. I</span>
+    <span class="save-status">
+      <span id="saveDot" class="save-dot"></span>
+      <span id="saveLabel">Auto-save</span>
+    </span>
+  </div>
+  <h1 class="title">The House<br><em>Fund Forecaster</em></h1>
+</div>
+
+<div class="container">
+
+  <div class="advisory">
+    <span class="advisory-icon">⚠</span>
+    <div>Return assumptions are long-run historical averages, not guarantees. Stocks can drop 30%+ in a bad year. Not financial advice.</div>
+  </div>
+
+  <section class="card">
+    <div class="card-header"><span>🏠 The Goal</span></div>
+
+```
+<label class="field-label">House Price</label>
+<div class="money-wrap">
+  <span class="prefix">$</span>
+  <input type="text" inputmode="numeric" class="money-input" id="housePrice">
+</div>
+
+<div class="grid-2" style="margin-top: 14px;">
+  <div>
+    <label class="field-label">Down Pmt</label>
+    <div class="stepper">
+      <button onclick="step('downPct', -1, 3, 50)">−</button>
+      <div class="stepper-value"><span id="downPctVal">20</span>%</div>
+      <button onclick="step('downPct', 1, 3, 50)">+</button>
+    </div>
+  </div>
+  <div>
+    <label class="field-label">Closing</label>
+    <div class="stepper">
+      <button onclick="step('closingPct', -1, 1, 6)">−</button>
+      <div class="stepper-value"><span id="closingPctVal">3</span>%</div>
+      <button onclick="step('closingPct', 1, 1, 6)">+</button>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 14px;">
+  <label class="field-label">Chart Horizon</label>
+  <div class="stepper">
+    <button onclick="step('horizon', -1, 1, 20)">−</button>
+    <div class="stepper-value"><span id="horizonVal">10</span> yrs</div>
+    <button onclick="step('horizon', 1, 1, 20)">+</button>
+  </div>
+</div>
+
+<div class="target-box">
+  <label class="field-label" style="margin-bottom: 4px;">Target Needed</label>
+  <div class="target-amount" id="targetAmount">$0</div>
+  <div class="target-breakdown" id="targetBreakdown"></div>
+</div>
+```
+
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <span>Current Holdings</span>
+      <span class="card-header-total">Total <span id="holdingsTotal">$0</span></span>
+    </div>
+    <div id="holdingsList"></div>
+    <button class="add-holding" onclick="addHolding()">+ Add Holding</button>
+
+```
+<div id="allocationSection" style="margin-top: 18px; display: none;">
+  <label class="field-label" style="margin-bottom: 6px;">Allocation</label>
+  <div class="allocation-bar" id="allocationBar"></div>
+  <div class="allocation-legend" id="allocationLegend"></div>
+</div>
+```
+
+  </section>
+
+  <section class="card">
+    <div class="card-header"><span>Monthly Contribution</span></div>
+    <label class="field-label">Amount</label>
+    <div class="money-wrap">
+      <span class="prefix">$</span>
+      <input type="text" inputmode="numeric" class="money-input" id="monthly">
+    </div>
+
+```
+<label class="field-label" style="margin-top: 14px;">Goes Into</label>
+<div class="vehicle-grid" id="vehicleGrid"></div>
+```
+
+  </section>
+
+  <div class="verdict">
+    <div class="verdict-cell">
+      <label class="field-label">Year You Hit Target</label>
+      <div class="verdict-value" id="yearHit">–</div>
+      <div class="verdict-note" id="yearHitNote"></div>
+    </div>
+    <div class="verdict-cell">
+      <label class="field-label" id="atYearLabel">At Year 10</label>
+      <div class="verdict-value" id="finalTotal">$0</div>
+      <div class="verdict-note" id="gapNote"></div>
+    </div>
+  </div>
+
+  <section class="card chart-card">
+    <div class="chart-header">
+      <label class="field-label">Annual Growth</label>
+      <div class="chart-subtitle">Black line is total. Colored lines are each holding. Red dash is your target. Tap the chart for details.</div>
+    </div>
+    <svg class="chart-svg" id="chart" viewBox="0 0 400 320" preserveAspectRatio="none"></svg>
+    <div class="chart-tooltip" id="chartTooltip"></div>
+    <div class="chart-legend" id="chartLegend"></div>
+  </section>
+
+  <section class="card table-card">
+    <div class="table-header">
+      <label class="field-label">Year by Year</label>
+      <div class="table-swipe-hint">← swipe to see holdings</div>
+    </div>
+    <div class="table-scroll">
+      <table id="yearTable">
+        <thead id="yearTableHead"></thead>
+        <tbody id="yearTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><span>Progress Snapshots</span></div>
+    <div id="snapshotList"></div>
+    <button class="btn-primary" onclick="saveSnapshot()">+ Save Today's Snapshot</button>
+  </section>
+
+<button class="reset-btn" onclick="resetPlan()">Reset plan</button>
+
+  <div class="footer">
+    Auto-saves to this device<br>
+    Historical assumptions · Not financial advice
+  </div>
+</div>
+
+<script>
+const PRESETS = {
+  'SPY':  { name: 'S&P 500 ETF',           ret: 0.087, yld: 0.013, type: 'stock' },
+  'VOO':  { name: 'Vanguard S&P 500',      ret: 0.087, yld: 0.013, type: 'stock' },
+  'IVV':  { name: 'iShares S&P 500',       ret: 0.087, yld: 0.013, type: 'stock' },
+  'VTI':  { name: 'Vanguard Total Market', ret: 0.085, yld: 0.013, type: 'stock' },
+  'VT':   { name: 'Vanguard Total World',  ret: 0.066, yld: 0.019, type: 'stock' },
+  'VXUS': { name: 'Vanguard Intl',         ret: 0.042, yld: 0.028, type: 'stock' },
+  'QQQ':  { name: 'Nasdaq-100 ETF',        ret: 0.124, yld: 0.006, type: 'stock' },
+  'IWM':  { name: 'Russell 2000 ETF',      ret: 0.072, yld: 0.013, type: 'stock' },
+  'SCHD': { name: 'Schwab Dividend',       ret: 0.059, yld: 0.036, type: 'stock' },
+  'VYM':  { name: 'Vanguard High Div',     ret: 0.062, yld: 0.028, type: 'stock' },
+  'VIG':  { name: 'Vanguard Div Apprec',   ret: 0.082, yld: 0.018, type: 'stock' },
+  'BND':  { name: 'Vanguard Total Bond',   ret: 0.002, yld: 0.038, type: 'bond' },
+  'AGG':  { name: 'iShares Core Bond',     ret: 0.003, yld: 0.037, type: 'bond' },
+  'TLT':  { name: '20+ Yr Treasury',       ret: -0.01, yld: 0.043, type: 'bond' },
+  'SHY':  { name: '1-3 Yr Treasury',       ret: 0.000, yld: 0.040, type: 'bond' },
+  'BIL':  { name: 'T-Bill ETF',            ret: 0.000, yld: 0.045, type: 'cash' },
+  'SGOV': { name: '0-3 Mo Treasury',       ret: 0.000, yld: 0.045, type: 'cash' },
+  'VMFXX':{ name: 'Vanguard Money Mkt',    ret: 0.000, yld: 0.045, type: 'cash' },
+  'HYSA': { name: 'High-Yield Savings',    ret: 0.000, yld: 0.045, type: 'cash' },
+  'CASH': { name: 'Cash',                  ret: 0.000, yld: 0.040, type: 'cash' },
+  'CD':   { name: 'CD',                    ret: 0.000, yld: 0.0385,type: 'cash' },
+  'AAPL': { name: 'Apple',                 ret: 0.135, yld: 0.005, type: 'stock' },
+  'MSFT': { name: 'Microsoft',             ret: 0.142, yld: 0.008, type: 'stock' },
+  'GOOGL':{ name: 'Alphabet',              ret: 0.125, yld: 0.005, type: 'stock' },
+  'GOOG': { name: 'Alphabet',              ret: 0.125, yld: 0.005, type: 'stock' },
+  'AMZN': { name: 'Amazon',                ret: 0.140, yld: 0.000, type: 'stock' },
+  'NVDA': { name: 'Nvidia',                ret: 0.200, yld: 0.003, type: 'stock' },
+  'META': { name: 'Meta',                  ret: 0.150, yld: 0.004, type: 'stock' },
+  'TSLA': { name: 'Tesla',                 ret: 0.160, yld: 0.000, type: 'stock' },
+  'BRK.B':{ name: 'Berkshire Hathaway',    ret: 0.110, yld: 0.000, type: 'stock' },
+  'JNJ':  { name: 'Johnson & Johnson',     ret: 0.055, yld: 0.030, type: 'stock' },
+  'JPM':  { name: 'JPMorgan Chase',        ret: 0.086, yld: 0.024, type: 'stock' },
+  'KO':   { name: 'Coca-Cola',             ret: 0.060, yld: 0.030, type: 'stock' },
+  'PG':   { name: 'Procter & Gamble',      ret: 0.066, yld: 0.024, type: 'stock' },
+  'V':    { name: 'Visa',                  ret: 0.122, yld: 0.008, type: 'stock' },
+  'WMT':  { name: 'Walmart',               ret: 0.087, yld: 0.013, type: 'stock' },
+  'DIS':  { name: 'Disney',                ret: 0.070, yld: 0.010, type: 'stock' },
+  'XOM':  { name: 'Exxon Mobil',           ret: 0.047, yld: 0.033, type: 'stock' },
+};
+
+const TYPE_COLOR = { cash: '#2d6b3f', bond: '#4a6b8a', stock: '#b8341f', custom: '#8b6914' };
+const TYPE_LABEL = { cash: 'Cash', bond: 'Bond', stock: 'Stock', custom: 'Custom' };
+// More distinct colors, high contrast against each other
+const LINE_COLORS = [
+  '#b8341f', // red
+  '#2d6b3f', // green
+  '#4a6b8a', // blue
+  '#d4a000', // gold
+  '#6b4a8a', // purple
+  '#c06020', // orange
+  '#2a8080', // teal
+  '#8a4a4a'  // brown
+];
+const VEHICLES = [
+  { key: 'HYSA', rate: 0.045, label: '4.5%' },
+  { key: 'CD', rate: 0.0385, label: '3.85%' },
+  { key: 'Treasury', rate: 0.04, label: '4.0%' },
+  { key: 'SPY', rate: 0.10, label: '10%' },
+];
+
+const STORAGE_KEY = 'house-fund-forecaster-v1';
+let state = {
+  housePrice: 500000,
+  downPct: 20,
+  closingPct: 3,
+  horizon: 10,
+  monthly: 2000,
+  contribVehicle: 'HYSA',
+  holdings: [
+    { id: 1, ticker: 'HYSA', value: 25000, ret: 0, yld: 0.045, type: 'cash' },
+    { id: 2, ticker: 'SPY',  value: 30000, ret: 0.087, yld: 0.013, type: 'stock' },
+    { id: 3, ticker: 'BND',  value: 10000, ret: 0.002, yld: 0.038, type: 'bond' },
+  ],
+  expandedId: null,
+  snapshots: [],
+  lastSaved: null,
+};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = { ...state, ...parsed, expandedId: null };
+      if (!state.snapshots) state.snapshots = [];
+    }
+  } catch (e) { console.error('Load failed', e); }
+}
+
+let saveTimer = null;
+function save() {
+  setSaveStatus('saving');
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      state.lastSaved = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setSaveStatus('saved');
+    } catch (e) {
+      console.error('Save failed', e);
+      setSaveStatus('error');
+    }
+  }, 400);
+}
+
+function setSaveStatus(status) {
+  const dot = document.getElementById('saveDot');
+  const label = document.getElementById('saveLabel');
+  dot.className = 'save-dot' + (status === 'saving' ? ' saving' : status === 'error' ? ' error' : '');
+  if (status === 'saving') label.textContent = 'Saving';
+  else if (status === 'error') label.textContent = 'Error';
+  else if (state.lastSaved) label.textContent = 'Saved ' + relativeTime(state.lastSaved);
+  else label.textContent = 'Auto-save';
+}
+
+function relativeTime(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 10) return 'just now';
+  if (diff < 60) return Math.floor(diff) + 's ago';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+setInterval(() => { if (state.lastSaved) setSaveStatus('saved'); }, 30000);
+
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtK(n) {
+  const a = Math.abs(n);
+  if (a >= 1000000) return '$' + (n / 1000000).toFixed(2) + 'M';
+  if (a >= 1000) return '$' + Math.round(n / 1000) + 'k';
+  return '$' + Math.round(n);
+}
+
+// ============ SURGICAL RENDERING ============
+// Update only what changed; don't destroy input fields while user is typing
+
+function getTarget() {
+  return state.housePrice * (state.downPct / 100) + state.housePrice * (state.closingPct / 100);
+}
+function getTotalValue() {
+  return state.holdings.reduce((s, h) => s + (h.value || 0), 0);
+}
+
+function updateTargetDisplay() {
+  const downPayment = state.housePrice * (state.downPct / 100);
+  const closing = state.housePrice * (state.closingPct / 100);
+  const target = downPayment + closing;
+  document.getElementById('targetAmount').textContent = fmt(target);
+  document.getElementById('targetBreakdown').textContent = fmtK(downPayment) + ' down + ' + fmtK(closing) + ' closing';
+}
+
+function updateHoldingsTotal() {
+  document.getElementById('holdingsTotal').textContent = fmt(getTotalValue());
+}
+
+function updateDerived() {
+  // Called after any data change; updates everything EXCEPT inputs that user may be typing in
+  updateTargetDisplay();
+  updateHoldingsTotal();
+  renderAllocation();
+  const target = getTarget();
+  const forecast = computeForecast(target);
+  renderVerdict(forecast, target);
+  renderChart(forecast, target);
+  renderTable(forecast, target);
+  renderSnapshots();
+  updateHoldingRowSummaries(); // just the collapsed row numbers, not the expanded inputs
+}
+
+function updateHoldingRowSummaries() {
+  // Update the value/return/percent shown in each holding's collapsed row
+  const totalValue = getTotalValue();
+  state.holdings.forEach(h => {
+    const valEl = document.getElementById('hval-' + h.id);
+    const retEl = document.getElementById('hret-' + h.id);
+    const pctEl = document.getElementById('hpct-' + h.id);
+    if (valEl) valEl.textContent = fmt(h.value || 0);
+    if (retEl) retEl.textContent = (((h.ret || 0) + (h.yld || 0)) * 100).toFixed(1) + '% / yr';
+    if (pctEl) {
+      const pct = totalValue > 0 ? ((h.value || 0) / totalValue * 100).toFixed(1) : '0.0';
+      pctEl.textContent = pct + '% of total';
+    }
+  });
+}
+
+// Full render — called only on structural changes (add/remove holding, expand/collapse, init)
+function fullRender() {
+  // Top inputs (only set if not currently focused)
+  const hpEl = document.getElementById('housePrice');
+  if (document.activeElement !== hpEl) {
+    hpEl.value = state.housePrice ? state.housePrice.toLocaleString('en-US') : '';
+  }
+  const monthlyEl = document.getElementById('monthly');
+  if (document.activeElement !== monthlyEl) {
+    monthlyEl.value = state.monthly ? state.monthly.toLocaleString('en-US') : '';
+  }
+  document.getElementById('downPctVal').textContent = state.downPct;
+  document.getElementById('closingPctVal').textContent = state.closingPct;
+  document.getElementById('horizonVal').textContent = state.horizon;
+
+  updateTargetDisplay();
+  updateHoldingsTotal();
+
+  const list = document.getElementById('holdingsList');
+  list.innerHTML = '';
+  state.holdings.forEach((h, i) => {
+    list.appendChild(renderHolding(h, i));
+  });
+
+  renderAllocation();
+  renderVehicleButtons();
+
+  const target = getTarget();
+  const forecast = computeForecast(target);
+  renderVerdict(forecast, target);
+  renderChart(forecast, target);
+  renderTable(forecast, target);
+  renderSnapshots();
+}
+
+function renderHolding(h, i) {
+  const wrap = document.createElement('div');
+  wrap.className = 'holding';
+  wrap.style.borderLeftColor = LINE_COLORS[i % LINE_COLORS.length];
+
+  const expanded = state.expandedId === h.id;
+  const preset = PRESETS[h.ticker];
+  const totalValue = getTotalValue();
+  const pct = totalValue > 0 ? ((h.value || 0) / totalValue * 100).toFixed(1) : '0.0';
+
+  const row = document.createElement('button');
+  row.className = 'holding-row';
+  row.onclick = () => {
+    state.expandedId = expanded ? null : h.id;
+    fullRender();
+  };
+  row.innerHTML = `
+    <div class="holding-main">
+      <div class="holding-ticker-row">
+        <span class="holding-ticker">${h.ticker || '—'}</span>
+        <span class="holding-pill" style="background:${TYPE_COLOR[h.type]}">${TYPE_LABEL[h.type]}</span>
+      </div>
+      ${preset ? `<div class="holding-name">${preset.name}</div>` : ''}
+    </div>
+    <div>
+      <div class="holding-value" id="hval-${h.id}">${fmt(h.value || 0)}</div>
+      <div class="holding-return" id="hret-${h.id}">${(((h.ret || 0) + (h.yld || 0)) * 100).toFixed(1)}% / yr</div>
+      <div class="holding-pct" id="hpct-${h.id}">${pct}% of total</div>
+    </div>
+    <span class="chevron">${expanded ? '▲' : '▼'}</span>
+  `;
+  wrap.appendChild(row);
+
+  if (expanded) {
+    const detail = document.createElement('div');
+    detail.className = 'holding-detail';
+    detail.innerHTML = `
+      <div>
+        <label class="field-label">Ticker</label>
+        <input type="text" class="text-input" value="${escapeHtml(h.ticker)}" placeholder="e.g. SPY"
+               autocapitalize="characters" autocorrect="off" spellcheck="false"
+               id="ticker-${h.id}">
+      </div>
+      <div>
+        <label class="field-label">Current Value</label>
+        <div class="money-wrap">
+          <span class="prefix">$</span>
+          <input type="text" inputmode="numeric" class="money-input"
+                 value="${h.value ? h.value.toLocaleString('en-US') : ''}"
+                 id="value-${h.id}">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="field-label">Price Return</label>
+          <div class="pct-wrap">
+            <input type="text" inputmode="decimal" class="pct-input"
+                   value="${((h.ret || 0) * 100).toFixed(1)}"
+                   id="ret-${h.id}">
+            <span class="suffix">%</span>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Dividend</label>
+          <div class="pct-wrap">
+            <input type="text" inputmode="decimal" class="pct-input"
+                   value="${((h.yld || 0) * 100).toFixed(1)}"
+                   id="yld-${h.id}">
+            <span class="suffix">%</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Type</label>
+        <div class="type-grid">
+          ${['cash','bond','stock','custom'].map(t => `
+            <button class="type-btn${h.type === t ? ' active' : ''}"
+                    style="${h.type === t ? 'background:' + TYPE_COLOR[t] + ';border-color:' + TYPE_COLOR[t] : ''}"
+                    onclick="setHoldingType(${h.id}, '${t}')">${TYPE_LABEL[t]}</button>
+          `).join('')}
+        </div>
+      </div>
+      <button class="remove-btn" onclick="removeHolding(${h.id})">Remove this holding</button>
+    `;
+    wrap.appendChild(detail);
+
+    // Attach listeners after the DOM is inserted
+    setTimeout(() => attachHoldingListeners(h.id), 0);
+  }
+
+  return wrap;
+}
+
+function attachHoldingListeners(id) {
+  const h = state.holdings.find(x => x.id === id);
+  if (!h) return;
+
+  const tickerEl = document.getElementById('ticker-' + id);
+  const valueEl = document.getElementById('value-' + id);
+  const retEl = document.getElementById('ret-' + id);
+  const yldEl = document.getElementById('yld-' + id);
+
+  // Ticker — surgical update, keep focus
+  if (tickerEl) {
+    tickerEl.addEventListener('input', (e) => {
+      const value = e.target.value;
+      h.ticker = value.toUpperCase();
+      const upper = value.toUpperCase().trim();
+      if (PRESETS[upper]) {
+        h.ret = PRESETS[upper].ret;
+        h.yld = PRESETS[upper].yld;
+        h.type = PRESETS[upper].type;
+        // Update the linked inputs without refocusing
+        if (retEl && document.activeElement !== retEl) retEl.value = (h.ret * 100).toFixed(1);
+        if (yldEl && document.activeElement !== yldEl) yldEl.value = (h.yld * 100).toFixed(1);
+      }
+      save();
+      updateDerived();
+    });
+    tickerEl.addEventListener('focus', (e) => e.target.select());
+  }
+
+  // Value — select on focus, commit raw number, reformat on blur
+  if (valueEl) {
+    valueEl.addEventListener('focus', (e) => {
+      // Show raw number without commas for easier editing
+      e.target.value = h.value || '';
+      setTimeout(() => e.target.select(), 0);
+    });
+    valueEl.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9.]/g, '');
+      h.value = +raw || 0;
+      save();
+      updateDerived();
+    });
+    valueEl.addEventListener('blur', (e) => {
+      e.target.value = h.value ? h.value.toLocaleString('en-US') : '';
+    });
+  }
+
+  // Return %
+  if (retEl) {
+    retEl.addEventListener('focus', (e) => setTimeout(() => e.target.select(), 0));
+    retEl.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9.\-]/g, '');
+      h.ret = (+raw || 0) / 100;
+      save();
+      updateDerived();
+    });
+  }
+
+  // Yield %
+  if (yldEl) {
+    yldEl.addEventListener('focus', (e) => setTimeout(() => e.target.select(), 0));
+    yldEl.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9.\-]/g, '');
+      h.yld = (+raw || 0) / 100;
+      save();
+      updateDerived();
+    });
+  }
+}
+
+function setHoldingType(id, type) {
+  const h = state.holdings.find(x => x.id === id);
+  if (!h) return;
+  h.type = type;
+  save();
+  fullRender(); // Needs full render to update button styles
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderAllocation() {
+  const totalValue = getTotalValue();
+  const section = document.getElementById('allocationSection');
+  if (totalValue <= 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  const by = { cash: 0, bond: 0, stock: 0, custom: 0 };
+  state.holdings.forEach(h => { by[h.type] = (by[h.type] || 0) + (h.value || 0); });
+
+  const bar = document.getElementById('allocationBar');
+  const legend = document.getElementById('allocationLegend');
+  bar.innerHTML = '';
+  legend.innerHTML = '';
+  ['cash', 'bond', 'stock', 'custom'].forEach(type => {
+    const pct = (by[type] / totalValue) * 100;
+    if (pct === 0) return;
+    const seg = document.createElement('div');
+    seg.style.width = pct + '%';
+    seg.style.background = TYPE_COLOR[type];
+    bar.appendChild(seg);
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-swatch" style="background:${TYPE_COLOR[type]}"></div><span>${TYPE_LABEL[type]} ${pct.toFixed(0)}%</span>`;
+    legend.appendChild(item);
+  });
+}
+
+function renderVehicleButtons() {
+  const grid = document.getElementById('vehicleGrid');
+  grid.innerHTML = '';
+  VEHICLES.forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'vehicle-btn' + (state.contribVehicle === v.key ? ' active' : '');
+    btn.onclick = () => {
+      state.contribVehicle = v.key;
+      save();
+      document.querySelectorAll('.vehicle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateDerived();
+    };
+    btn.innerHTML = `<span class="vehicle-btn-name">${v.key}</span><span class="vehicle-btn-rate">${v.label}</span>`;
+    grid.appendChild(btn);
+  });
+}
+
+function computeForecast(target) {
+  const balances = state.holdings.map(h => h.value || 0);
+  let contribBalance = 0;
+  const contribRate = (VEHICLES.find(v => v.key === state.contribVehicle) || VEHICLES[0]).rate;
+  const data = [];
+
+  const y0 = { year: 0, total: balances.reduce((a,b)=>a+b, 0), contributions: 0 };
+  state.holdings.forEach((h, i) => { y0['h' + h.id] = balances[i]; });
+  data.push(y0);
+
+  for (let y = 1; y <= state.horizon; y++) {
+    state.holdings.forEach((h, i) => {
+      balances[i] = balances[i] * (1 + (h.ret || 0) + (h.yld || 0));
+    });
+    const mRate = contribRate / 12;
+    const yearlyContrib = state.monthly * (((Math.pow(1 + mRate, 12) - 1) / mRate));
+    contribBalance = contribBalance * (1 + contribRate) + yearlyContrib;
+    const total = balances.reduce((a,b)=>a+b, 0) + contribBalance;
+    const row = { year: y, total: Math.round(total), contributions: Math.round(contribBalance) };
+    state.holdings.forEach((h, i) => { row['h' + h.id] = Math.round(balances[i]); });
+    data.push(row);
+  }
+  return data;
+}
+
+function renderVerdict(forecast, target) {
+  let yearHit = null;
+  for (let i = 0; i < forecast.length; i++) {
+    if (forecast[i].total >= target) { yearHit = forecast[i].year; break; }
+  }
+  const yh = document.getElementById('yearHit');
+  const yhn = document.getElementById('yearHitNote');
+  if (yearHit !== null) {
+    yh.textContent = 'Year ' + yearHit;
+    yh.className = 'verdict-value hit-green';
+    yhn.textContent = yearHit === 1 ? 'Within a year' : 'About ' + yearHit + ' years away';
+    yhn.className = 'verdict-note';
+  } else {
+    yh.textContent = '> ' + state.horizon + ' yrs';
+    yh.className = 'verdict-value miss-red';
+    yhn.textContent = 'Extend horizon or raise contributions';
+    yhn.className = 'verdict-note';
+  }
+
+  const finalTotal = forecast[forecast.length - 1].total;
+  const gap = finalTotal - target;
+  document.getElementById('atYearLabel').textContent = 'At Year ' + state.horizon;
+  document.getElementById('finalTotal').textContent = fmt(finalTotal);
+  const gn = document.getElementById('gapNote');
+  gn.textContent = (gap >= 0 ? '✓ +' : '⚠ ') + fmtK(gap) + ' vs target';
+  gn.className = 'verdict-note ' + (gap >= 0 ? 'hit-green' : 'miss-red');
+}
+
+let chartCache = null;
+function renderChart(forecast, target) {
+  const svg = document.getElementById('chart');
+  const W = 400, H = 320;
+  const pad = { top: 24, right: 16, bottom: 34, left: 56 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  const allValues = [target];
+  forecast.forEach(row => {
+    allValues.push(row.total);
+    state.holdings.forEach(h => allValues.push(row['h' + h.id] || 0));
+    if (state.monthly > 0) allValues.push(row.contributions);
+  });
+  const maxY = Math.max(...allValues) * 1.1;
+  const minY = 0;
+  const maxX = state.horizon;
+
+  const x = (v) => pad.left + (v / maxX) * chartW;
+  const y = (v) => pad.top + chartH - ((v - minY) / (maxY - minY)) * chartH;
+
+  chartCache = { x, y, pad, chartW, chartH, W, H, maxX, forecast, target };
+
+  let html = '';
+
+  // Subtle zebra striping on alternating years for readability
+  for (let i = 0; i < maxX; i += 2) {
+    const xStart = x(i);
+    const xEnd = x(Math.min(i + 1, maxX));
+    html += `<rect x="${xStart}" y="${pad.top}" width="${xEnd - xStart}" height="${chartH}" fill="rgba(26,20,16,0.015)"/>`;
+  }
+
+  // Horizontal gridlines
+  for (let i = 0; i <= 4; i++) {
+    const gy = pad.top + (chartH / 4) * i;
+    const val = maxY - (maxY / 4) * i;
+    html += `<line x1="${pad.left}" y1="${gy}" x2="${W - pad.right}" y2="${gy}" stroke="rgba(26,20,16,0.1)" stroke-width="1"/>`;
+    html += `<text x="${pad.left - 6}" y="${gy + 3}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#1a1410">${fmtK(val)}</text>`;
+  }
+
+  // X axis labels
+  const xStep = maxX <= 10 ? 1 : 2;
+  for (let i = 0; i <= maxX; i += xStep) {
+    const xx = x(i);
+    html += `<line x1="${xx}" y1="${pad.top + chartH}" x2="${xx}" y2="${pad.top + chartH + 3}" stroke="#1a1410" stroke-width="1"/>`;
+    html += `<text x="${xx}" y="${pad.top + chartH + 16}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#1a1410">${i === 0 ? 'now' : 'Y' + i}</text>`;
+  }
+
+  // Target reference line
+  const ty = y(target);
+  html += `<line x1="${pad.left}" y1="${ty}" x2="${W - pad.right}" y2="${ty}" stroke="#b8341f" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  html += `<text x="${W - pad.right - 4}" y="${ty - 5}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="#b8341f">Target ${fmtK(target)}</text>`;
+
+  // Year hit marker
+  let yearHit = null;
+  for (let i = 0; i < forecast.length; i++) {
+    if (forecast[i].total >= target) { yearHit = forecast[i].year; break; }
+  }
+  if (yearHit !== null && yearHit <= state.horizon) {
+    const xh = x(yearHit);
+    html += `<line x1="${xh}" y1="${pad.top}" x2="${xh}" y2="${pad.top + chartH}" stroke="#2d6b3f" stroke-width="1" stroke-dasharray="3 3"/>`;
+    html += `<text x="${xh}" y="${pad.top - 6}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="#2d6b3f">Y${yearHit}</text>`;
+  }
+
+  // Holding lines — thicker, clearer, with subtle white halo for separation
+  state.holdings.forEach((h, i) => {
+    const color = LINE_COLORS[i % LINE_COLORS.length];
+    const points = forecast.map(row => `${x(row.year)},${y(row['h' + h.id] || 0)}`).join(' ');
+    // White outline for separation
+    html += `<polyline points="${points}" fill="none" stroke="#f2ede3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`;
+    // Colored line on top
+    html += `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    // End label with ticker
+    const lastRow = forecast[forecast.length - 1];
+    const endX = x(lastRow.year);
+    const endY = y(lastRow['h' + h.id] || 0);
+    html += `<circle cx="${endX}" cy="${endY}" r="3" fill="${color}" stroke="#fff" stroke-width="1.5"/>`;
+  });
+
+  // Contributions line
+  if (state.monthly > 0) {
+    const points = forecast.map(row => `${x(row.year)},${y(row.contributions)}`).join(' ');
+    html += `<polyline points="${points}" fill="none" stroke="#6b4a8a" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="round"/>`;
+  }
+
+  // Total line — boldest, on top
+  const totalPoints = forecast.map(row => `${x(row.year)},${y(row.total)}`).join(' ');
+  html += `<polyline points="${totalPoints}" fill="none" stroke="#f2ede3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  html += `<polyline points="${totalPoints}" fill="none" stroke="#1a1410" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  forecast.forEach(row => {
+    html += `<circle cx="${x(row.year)}" cy="${y(row.total)}" r="3" fill="#1a1410" stroke="#fff" stroke-width="1.5"/>`;
+  });
+
+  // Invisible tap targets for each year
+  forecast.forEach(row => {
+    const tx = x(row.year);
+    const halfWidth = chartW / (maxX * 2);
+    html += `<rect x="${tx - halfWidth}" y="${pad.top}" width="${halfWidth * 2}" height="${chartH}" fill="transparent" class="tap-zone" data-year="${row.year}"/>`;
+  });
+
+  svg.innerHTML = html;
+
+  // Attach tap handlers
+  svg.querySelectorAll('.tap-zone').forEach(zone => {
+    zone.addEventListener('click', (e) => {
+      const year = +zone.dataset.year;
+      showTooltip(year);
+    });
+  });
+
+  // Legend
+  const legend = document.getElementById('chartLegend');
+  legend.innerHTML = '';
+  const totalItem = document.createElement('span');
+  totalItem.innerHTML = `<span class="legend-line" style="background:#1a1410;height:3px"></span><strong>Total</strong>`;
+  legend.appendChild(totalItem);
+  state.holdings.forEach((h, i) => {
+    const item = document.createElement('span');
+    const color = LINE_COLORS[i % LINE_COLORS.length];
+    item.innerHTML = `<span class="legend-line" style="background:${color};height:2px"></span>${h.ticker || 'H' + (i+1)}`;
+    legend.appendChild(item);
+  });
+  if (state.monthly > 0) {
+    const item = document.createElement('span');
+    item.innerHTML = `<span class="legend-line" style="background:#6b4a8a"></span>Contrib`;
+    legend.appendChild(item);
+  }
+  const targetItem = document.createElement('span');
+  targetItem.innerHTML = `<span class="legend-line" style="background:#b8341f"></span>Target`;
+  legend.appendChild(targetItem);
+}
+
+function showTooltip(year) {
+  const tooltip = document.getElementById('chartTooltip');
+  const row = chartCache.forecast[year];
+  if (!row) return;
+
+  let html = `<div class="chart-tooltip-title">${year === 0 ? 'Today' : 'Year ' + year}</div>`;
+  html += `<div class="chart-tooltip-row"><span><span class="swatch" style="background:#1a1410"></span>Total</span><span><strong>${fmt(row.total)}</strong></span></div>`;
+  state.holdings.forEach((h, i) => {
+    const color = LINE_COLORS[i % LINE_COLORS.length];
+    html += `<div class="chart-tooltip-row"><span><span class="swatch" style="background:${color}"></span>${h.ticker || 'H'+(i+1)}</span><span>${fmt(row['h' + h.id] || 0)}</span></div>`;
+  });
+  if (state.monthly > 0) {
+    html += `<div class="chart-tooltip-row"><span><span class="swatch" style="background:#6b4a8a"></span>New Contrib</span><span>${fmt(row.contributions)}</span></div>`;
+  }
+  html += `<div class="chart-tooltip-row" style="opacity:0.6; margin-top:4px; padding-top:4px; border-top:1px solid rgba(242,237,227,0.2)"><span>vs Target</span><span>${row.total >= chartCache.target ? '+' : ''}${fmtK(row.total - chartCache.target)}</span></div>`;
+
+  tooltip.innerHTML = html;
+  tooltip.style.display = 'block';
+}
+
+function renderTable(forecast, target) {
+  const head = document.getElementById('yearTableHead');
+  const body = document.getElementById('yearTableBody');
+
+  let headHtml = '<tr><th>Yr</th>';
+  state.holdings.forEach((h, i) => {
+    headHtml += `<th style="color:${LINE_COLORS[i % LINE_COLORS.length]}">${h.ticker || 'H'+(i+1)}</th>`;
+  });
+  if (state.monthly > 0) headHtml += '<th style="color:#6b4a8a">Contrib</th>';
+  headHtml += '<th>Total</th></tr>';
+  head.innerHTML = headHtml;
+
+  let bodyHtml = '';
+  let seenHit = false;
+  forecast.forEach(row => {
+    const hit = row.total >= target;
+    const firstHit = hit && !seenHit;
+    if (hit) seenHit = true;
+    bodyHtml += `<tr${firstHit ? ' class="hit"' : ''}>`;
+    bodyHtml += `<td>${row.year === 0 ? 'Now' : row.year}</td>`;
+    state.holdings.forEach(h => {
+      bodyHtml += `<td>${fmtK(row['h' + h.id] || 0)}</td>`;
+    });
+    if (state.monthly > 0) bodyHtml += `<td style="color:#6b4a8a">${fmtK(row.contributions)}</td>`;
+    bodyHtml += `<td style="font-weight:600">${fmtK(row.total)}</td>`;
+    bodyHtml += '</tr>';
+  });
+  body.innerHTML = bodyHtml;
+}
+
+function renderSnapshots() {
+  const list = document.getElementById('snapshotList');
+  list.innerHTML = '';
+  if (!state.snapshots || state.snapshots.length === 0) {
+    list.innerHTML = `<div class="snapshot-empty">No snapshots yet. Save one to track your real progress over time.</div>`;
+    return;
+  }
+  const sorted = [...state.snapshots].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const target = getTarget();
+  sorted.forEach((snap, idx) => {
+    const prev = sorted[idx + 1]; // chronologically older
+    const delta = prev ? snap.total - prev.total : null;
+    const pctToTarget = (snap.total / target * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'snapshot-row';
+    row.innerHTML = `
+      <div style="flex:1; min-width:0">
+        <div class="snapshot-date">${new Date(snap.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+        <div class="snapshot-sub">${pctToTarget}% of target · ${snap.holdings} holding${snap.holdings === 1 ? '' : 's'}</div>
+      </div>
+      <div>
+        <div class="snapshot-value">${fmt(snap.total)}</div>
+        ${delta !== null ? `<div class="snapshot-delta ${delta >= 0 ? 'hit-green' : 'miss-red'}">${delta >= 0 ? '+' : ''}${fmtK(delta)}</div>` : '<div class="snapshot-delta" style="opacity:0.4">first</div>'}
+      </div>
+      <button class="snapshot-remove" onclick="removeSnapshot('${snap.id}')" aria-label="Remove">×</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function saveSnapshot() {
+  const total = getTotalValue();
+  const today = new Date().toISOString().split('T')[0];
+  // Check if there's already a snapshot for today — replace it
+  state.snapshots = (state.snapshots || []).filter(s => !s.date.startsWith(today));
+  state.snapshots.push({
+    id: Date.now().toString(),
+    date: new Date().toISOString(),
+    total: Math.round(total),
+    holdings: state.holdings.length,
+  });
+  save();
+  renderSnapshots();
+}
+
+function removeSnapshot(id) {
+  if (!confirm('Remove this snapshot?')) return;
+  state.snapshots = state.snapshots.filter(s => s.id !== id);
+  save();
+  renderSnapshots();
+}
+
+function step(key, delta, min, max) {
+  state[key] = Math.max(min, Math.min(max, state[key] + delta));
+  save();
+  document.getElementById(key + 'Val').textContent = state[key];
+  updateDerived();
+}
+
+function addHolding() {
+  const newId = Math.max(0, ...state.holdings.map(h => h.id)) + 1;
+  state.holdings.push({ id: newId, ticker: '', value: 0, ret: 0.08, yld: 0, type: 'stock' });
+  state.expandedId = newId;
+  save();
+  fullRender();
+}
+
+function removeHolding(id) {
+  if (!confirm('Remove this holding?')) return;
+  state.holdings = state.holdings.filter(h => h.id !== id);
+  state.expandedId = null;
+  save();
+  fullRender();
+}
+
+function resetPlan() {
+  if (!confirm('Reset your plan? All saved data will be cleared, including snapshots.')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  state = {
+    housePrice: 500000, downPct: 20, closingPct: 3, horizon: 10,
+    monthly: 2000, contribVehicle: 'HYSA',
+    holdings: [
+      { id: 1, ticker: 'HYSA', value: 25000, ret: 0, yld: 0.045, type: 'cash' },
+      { id: 2, ticker: 'SPY',  value: 30000, ret: 0.087, yld: 0.013, type: 'stock' },
+      { id: 3, ticker: 'BND',  value: 10000, ret: 0.002, yld: 0.038, type: 'bond' },
+    ],
+    expandedId: null, snapshots: [], lastSaved: null,
+  };
+  fullRender();
+  setSaveStatus('saved');
+  document.getElementById('saveLabel').textContent = 'Auto-save';
+}
+
+// Top-level input listeners — surgical updates, no re-render
+const housePriceEl = document.getElementById('housePrice');
+housePriceEl.addEventListener('focus', (e) => {
+  e.target.value = state.housePrice || '';
+  setTimeout(() => e.target.select(), 0);
+});
+housePriceEl.addEventListener('input', (e) => {
+  state.housePrice = +e.target.value.replace(/[^0-9.]/g, '') || 0;
+  save();
+  updateDerived();
+});
+housePriceEl.addEventListener('blur', (e) => {
+  e.target.value = state.housePrice ? state.housePrice.toLocaleString('en-US') : '';
+});
+
+const monthlyEl = document.getElementById('monthly');
+monthlyEl.addEventListener('focus', (e) => {
+  e.target.value = state.monthly || '';
+  setTimeout(() => e.target.select(), 0);
+});
+monthlyEl.addEventListener('input', (e) => {
+  state.monthly = +e.target.value.replace(/[^0-9.]/g, '') || 0;
+  save();
+  updateDerived();
+});
+monthlyEl.addEventListener('blur', (e) => {
+  e.target.value = state.monthly ? state.monthly.toLocaleString('en-US') : '';
+});
+
+loadState();
+fullRender();
+if (state.lastSaved) setSaveStatus('saved');
+</script>
+
+</body>
+</html>
